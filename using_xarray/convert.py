@@ -5,30 +5,50 @@ import click
 
 _time_encoding = dict(units="seconds since 1970-01-01 00:00:00", calendar="standard")
 
-@click.command()
-@click.argument('infile')
-@click.option('--varn', help='Name of variable to extract')
-def convert(infile, varn='IRRATE_no_level'):
+
+def convert(infile, outfile=None, variable=None,
+        factor=None, name=None, units=None, long_name=None):
     """Convert wgrib2 netCDF to CF-1.6 format"""
     with xr.open_dataset(infile) as ds:
         # extract data array for variable
-        rain_da = ds[varn]
+        if variable is None:
+            da = ds.data_vars.values()[0]
+        else:
+            da = ds[variable]
 
-        # convert to mm h-1
-        factor = 3600.
-        rain_da *= factor
+        if factor:
+            da *= factor
 
-        # rename to rainfall_flux
-        # http://cfconventions.org/Data/cf-standard-names/36/build/cf-standard-name-table.html
-        rain_ds = rain_da.to_dataset(name='rainfall_flux')
+        if units is not None:
+            da.attrs['units'] = units
+        if long_name is not None:
+            da.attrs['long_name'] = long_name
 
-        # set conventions
-        rain_ds.attrs['Conventions'] = 'CF-1.6'
+        if name is not None:
+            namekw = dict(name=name)
+        else:
+            namekw = {}
+        dsnew = da.to_dataset(**namekw)
 
-        # write to output file
-        outfile = os.path.splitext(infile)[0] + '_cf1.nc'
-        rain_ds.to_netcdf(outfile, encoding=dict(time=_time_encoding))
+        dsnew.attrs['Conventions'] = 'CF-1.6'
+
+        if outfile is None:
+            outfile = os.path.splitext(infile)[0] + '_cf1.nc'
+        dsnew.to_netcdf(outfile, encoding=dict(time=_time_encoding))
+
+
+@click.command()
+@click.argument('infile', type=click.Path(file_okay=True))
+@click.option('--outfile', help='Output file (default: infile + _cf1.nc)')
+@click.option('--variable', help='Name of variable to extract (default: first data variable)')
+@click.option('--factor', type=float, help='Scale the variable by this factor (remember to update units)')
+@click.option('--name', help='Rename the variable to this name (see http://cfconventions.org/Data/cf-standard-names/36/build/cf-standard-name-table.html)')
+@click.option('--units', help='Overwrite units attribute on data variable')
+@click.option('--long_name', help='Overwrite long_name attribute on data variable')
+def cli(**kwargs):
+    """Make netCDF file CF-1.6 compliant"""
+    convert(**kwargs)
 
 
 if __name__ == '__main__':
-    convert()
+    cli()
