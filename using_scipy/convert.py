@@ -140,7 +140,7 @@ def date2num(dates):
 
 
 def convert(infile, outfile, variable,
-        units=None, long_name=None,
+        name=None, units=None, long_name=None,
         factor=None, fill_missing=None):
     """Convert a netCDF file to CF-1.6 with some reformatting
 
@@ -150,6 +150,8 @@ def convert(infile, outfile, variable,
         paths to input/output files
     variable : str
         data variable to extract
+    name : str
+        rename data variable
     units : str
         overwrite units attribute on variable
     long_name : str
@@ -198,13 +200,15 @@ def convert(infile, outfile, variable,
             attrs.update(_FillValue=tgt_fill_value)
         else:
             tgt_fill_value = np.float(fill_missing)
-
-        indata = indatavar[:]
+        if name is None:
+            name = variable
+        outdatavar = create_data_variable(dsout, name=name,
+                dtype='f4', dims=('time', 'lat', 'lon'), **attrs)
+        # copy data
+        indata = indatavar[:].astype('f4')
         indata = np.ma.masked_values(indata, src_fill_value, copy=False)
         if factor:
             indata = indata * factor
-        outdatavar = create_data_variable(dsout, name='rainfall_rate',
-                dtype='f4', dims=('time', 'lat', 'lon'), **attrs)
         outdatavar[:] = indata.filled(tgt_fill_value)
 
         dsout.Conventions = 'CF-1.6'
@@ -217,6 +221,7 @@ if __name__ == '__main__':
     parser.add_argument('infile', help='Input netCDF file')
     parser.add_argument('outfile', help='Output netCDF file')
     parser.add_argument('--variable', help='Variable name in input file')
+    parser.add_argument('--name', help='Rename data variable')
     parser.add_argument('--units', help='Overwrite units attribute on variable')
     parser.add_argument('--long_name', help='Overwrite long_name attribute on variable')
     parser.add_argument('--factor', type=float, help='Factor to multiply the data with (default: 1)')
