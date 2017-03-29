@@ -139,7 +139,9 @@ def date2num(dates):
     return np.squeeze(nums)[()]
 
 
-def convert(infile, outfile, variable, factor=None, fill_missing=None):
+def convert(infile, outfile, variable,
+        units=None, long_name=None,
+        factor=None, fill_missing=None):
     """Convert a netCDF file to CF-1.6 with some reformatting
 
     Parameters
@@ -148,6 +150,10 @@ def convert(infile, outfile, variable, factor=None, fill_missing=None):
         paths to input/output files
     variable : str
         data variable to extract
+    units : str
+        overwrite units attribute on variable
+    long_name : str
+        overwrite long_name attribute on variable
     factor : float
         multiply the data by this factor
         set to None or 0 to disable
@@ -181,8 +187,12 @@ def convert(infile, outfile, variable, factor=None, fill_missing=None):
         create_time_dimension(dsout, ntime=len(timedata), timedata=timedata)
 
         # data variable
-        attrs = dict(units='mm h-1', long_name=indatavar.long_name)
-        src_fill_value = indatavar._FillValue
+        if units is None:
+            units = getattr(indatavar, 'units', '')
+        if long_name is None:
+            long_name = getattr(indatavar, 'long_name', '')
+        attrs = dict(units=units, long_name=long_name)
+        src_fill_value = getattr(indatavar, '_FillValue', np.nan)
         if fill_missing is None:
             tgt_fill_value = np.nan
             attrs.update(_FillValue=tgt_fill_value)
@@ -207,6 +217,8 @@ if __name__ == '__main__':
     parser.add_argument('infile', help='Input netCDF file')
     parser.add_argument('outfile', help='Output netCDF file')
     parser.add_argument('--variable', help='Variable name in input file')
+    parser.add_argument('--units', help='Overwrite units attribute on variable')
+    parser.add_argument('--long_name', help='Overwrite long_name attribute on variable')
     parser.add_argument('--factor', type=float, help='Factor to multiply the data with (default: 1)')
     parser.add_argument('--fill_missing', type=float, help='Fill missing data with this value')
     args = parser.parse_args()
