@@ -17,7 +17,6 @@ Make sure you have a `convert.spec` file that looks like this:
 
 
     a = Analysis(['convert.py'],
-                 pathex=['C:\\Users\\josl\\Documents\\GitHub\\gras_scripts\\Python\\wgrib_reformat\\using_scipy'],
                  binaries=None,
                  datas=None,
                  hiddenimports=[
